@@ -120,6 +120,20 @@ CREATE TABLE IF NOT EXISTS public.practice_schedules (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 9. USER ACCOUNTS (Foydalanuvchilar login va parollari)
+CREATE TABLE IF NOT EXISTS public.user_accounts (
+  id TEXT PRIMARY KEY,
+  login TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  role TEXT NOT NULL, -- 'student', 'university', 'company', 'admin'
+  name TEXT,
+  email TEXT,
+  phone TEXT,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ROW LEVEL SECURITY (RLS) Yoqish va ochiq kirish ruxsatnomalarini berish
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
@@ -129,6 +143,7 @@ ALTER TABLE public.course_lessons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.university_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.practice_schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_accounts ENABLE ROW LEVEL SECURITY;
 
 -- Barcha jadvallar uchun umumiy o'qish va yozish siyosatlari (Anonim va ro'yxatdan o'tgan foydalanuvchilar uchun)
 DO $$
@@ -136,7 +151,7 @@ DECLARE
   tbl text;
 BEGIN
   FOR tbl IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN (
-    'profiles', 'jobs', 'job_applications', 'courses', 'course_lessons', 'student_progress', 'university_posts', 'practice_schedules'
+    'profiles', 'jobs', 'job_applications', 'courses', 'course_lessons', 'student_progress', 'university_posts', 'practice_schedules', 'user_accounts'
   )
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Public access for %I" ON public.%I;', tbl, tbl);

@@ -224,6 +224,67 @@ window.TWPSupabase = {
     }
   },
 
+  // 4. Foydalanuvchi hisoblari (User accounts) sinxronlash
+  async syncUserAccounts() {
+    if (!sb) return;
+    try {
+      const { data, error } = await sb.from('user_accounts').select('*');
+      if (!error && Array.isArray(data) && data.length) {
+        let localAccounts = (typeof getRegisteredAccounts === 'function') ? getRegisteredAccounts() : (JSON.parse(localStorage.getItem('twp_registered_accounts') || '[]'));
+        data.forEach(cloudAcc => {
+          const idx = localAccounts.findIndex(a => String(a.login) === String(cloudAcc.login));
+          const mapped = {
+            id: cloudAcc.id,
+            login: cloudAcc.login,
+            password: cloudAcc.password,
+            role: cloudAcc.role,
+            name: cloudAcc.name || '',
+            email: cloudAcc.email || '',
+            phone: cloudAcc.phone || '',
+            note: cloudAcc.note || '',
+            createdAt: cloudAcc.created_at
+          };
+          if (idx >= 0) localAccounts[idx] = { ...localAccounts[idx], ...mapped };
+          else localAccounts.push(mapped);
+        });
+        localStorage.setItem('twp_registered_accounts', JSON.stringify(localAccounts));
+        if (typeof renderDashboard === 'function' && typeof dashboardRole !== 'undefined' && dashboardRole === 'admin') {
+          renderDashboard();
+        }
+      }
+    } catch (e) {
+      console.warn("User accounts sync xatosi:", e);
+    }
+  },
+
+  async saveUserAccount(acc) {
+    if (!sb) return;
+    try {
+      await sb.from('user_accounts').upsert({
+        id: acc.id || ('acc-' + acc.login),
+        login: String(acc.login),
+        password: String(acc.password),
+        role: acc.role,
+        name: acc.name || '',
+        email: acc.email || '',
+        phone: acc.phone || '',
+        note: acc.note || '',
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn("Supabase user account saqlashda xato:", e);
+    }
+  },
+
+  async deleteUserAccount(login) {
+    if (!sb) return;
+    try {
+      await sb.from('user_accounts').delete().eq('login', String(login));
+    } catch (e) {
+      console.warn("Supabase user account o‘chirishda xato:", e);
+    }
+  },
+
   // Boshlang'ich barcha sinxronlashni ishga tushirish
   async initSync() {
     if (!sb) return;
@@ -231,7 +292,8 @@ window.TWPSupabase = {
     await Promise.allSettled([
       this.syncJobs(),
       this.syncCoursesAndLessons(),
-      this.syncApplications()
+      this.syncApplications(),
+      this.syncUserAccounts()
     ]);
     console.log("✓ Supabase ma’lumotlari yuklandi va sinxronlandi.");
   }
